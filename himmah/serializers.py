@@ -1,13 +1,16 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist
 
 from .models import (
+    DayIntention,
     DayPlan,
     DayReview,
     Distraction,
     Goal,
     Reflection,
     Task,
+    TaskReflection,
     WeekReview,
 )
 
@@ -82,15 +85,34 @@ class ReflectionSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at"]
 
 
+class TaskReflectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TaskReflection
+        fields = [
+            "id",
+            "task",
+            "note",
+            "what_went_well",
+            "what_missed",
+            "actual_mins",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
 class GoalMinimalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Goal
-        fields = ["id", "title", "category"]
+        fields = ["id", "title", "category", "is_primary"]
 
 
 class TaskSerializer(serializers.ModelSerializer):
-    reflection = ReflectionSerializer(read_only=True)
-    goal_detail = GoalMinimalSerializer(source="goal", read_only=True)
+    """Reflection is optional reverse OneToOne — direct nested access raises if missing."""
+
+    reflection = serializers.SerializerMethodField()
+    task_reflection = TaskReflectionSerializer(read_only=True, allow_null=True)
+    goal_detail = GoalMinimalSerializer(source="goal", read_only=True, allow_null=True)
 
     class Meta:
         model = Task
@@ -100,7 +122,12 @@ class TaskSerializer(serializers.ModelSerializer):
             "goal_detail",
             "day_plan",
             "title",
+            "description",
             "scheduled_date",
+            "planned_start_time",
+            "planned_end_time",
+            "is_all_day",
+            "due_date",
             "order",
             "estimated_mins",
             "actual_mins",
@@ -111,10 +138,79 @@ class TaskSerializer(serializers.ModelSerializer):
             "skipped",
             "skip_reason",
             "reflection",
+            "task_reflection",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate(self, attrs):
+        # On partial updates, distinguish "key omitted" from "explicit null" (e.g. clearing times for all-day).
+        if self.instance is not None:
+            if "is_all_day" in attrs:
+                is_all_day = attrs.get("is_all_day")
+            else:
+                is_all_day = self.instance.is_all_day
+            if "planned_start_time" in attrs:
+                start_time = attrs.get("planned_start_time")
+            else:
+                start_time = self.instance.planned_start_time
+            if "planned_end_time" in attrs:
+                end_time = attrs.get("planned_end_time")
+            else:
+                end_time = self.instance.planned_end_time
+            if "goal" in attrs:
+                goal = attrs.get("goal")
+            else:
+                goal = self.instance.goal
+        else:
+            is_all_day = attrs["is_all_day"] if "is_all_day" in attrs else False
+            start_time = attrs.get("planned_start_time")
+            end_time = attrs.get("planned_end_time")
+            goal = attrs.get("goal")
+
+        if goal is None:
+            raise serializers.ValidationError({"goal": "goal is required for every task"})
+
+        if is_all_day and (start_time is not None or end_time is not None):
+            raise serializers.ValidationError(
+                {"planned_start_time": "all-day tasks cannot have start or end times"}
+            )
+
+        if not is_all_day and ((start_time is None) != (end_time is None)):
+            raise serializers.ValidationError(
+                {"planned_end_time": "provide both start and end times, or leave both empty"}
+            )
+
+        if start_time is not None and end_time is not None and end_time <= start_time:
+            raise serializers.ValidationError(
+                {"planned_end_time": "end time must be after start time"}
+            )
+
+        return attrs
+
+    def get_reflection(self, obj):
+        try:
+            return ReflectionSerializer(obj.reflection).data
+        except ObjectDoesNotExist:
+            return None
+
+
+class DayIntentionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DayIntention
+        fields = [
+            'id',
+            'day_plan',
+            'date',
+            'title',
+            'focus',
+            'purpose',
+            'character',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class DayPlanSerializer(serializers.ModelSerializer):
@@ -131,6 +227,7 @@ class DayPlanSerializer(serializers.ModelSerializer):
             "morning_energy",
             "morning_clarity",
             "sleep_quality",
+            "day_start_time",
             "tasks",
             "created_at",
             "updated_at",

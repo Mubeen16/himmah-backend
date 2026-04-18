@@ -1,6 +1,8 @@
 asgiref==3.11.1
 Django==6.0.4
 django-cors-headers==4.9.0
+django-ratelimit==4.1.0
+djoser==2.3.3
 djangorestframework==3.17.1
 djangorestframework_simplejwt==5.5.1
 psycopg2-binary==2.9.11

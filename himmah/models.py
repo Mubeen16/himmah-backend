@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import time, timedelta
 
 from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -39,6 +39,7 @@ class DayPlan(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='day_plans')
     date = models.DateField()
     intention = models.TextField(blank=True)
+    day_start_time = models.TimeField(default=time(9, 0))
     niyyah_for_allah = models.TextField(blank=True)
     niyyah_for_self = models.TextField(blank=True)
     morning_energy = models.PositiveSmallIntegerField(
@@ -66,12 +67,42 @@ class DayPlan(models.Model):
         return f"{self.user} — {self.date}"
 
 
+class DayIntention(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='day_intentions')
+    day_plan = models.OneToOneField(
+        DayPlan,
+        on_delete=models.CASCADE,
+        related_name='intention_entry',
+        null=True,
+        blank=True,
+    )
+    date = models.DateField()
+    title = models.CharField(max_length=255)
+    focus = models.TextField(blank=True)
+    purpose = models.TextField(blank=True)
+    character = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('user', 'date')
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.user} — {self.date} — {self.title}"
+
+
 class Task(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tasks')
     goal = models.ForeignKey(Goal, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks')
     day_plan = models.ForeignKey(DayPlan, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks')
     title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
     scheduled_date = models.DateField()
+    planned_start_time = models.TimeField(null=True, blank=True)
+    planned_end_time = models.TimeField(null=True, blank=True)
+    is_all_day = models.BooleanField(default=False)
+    due_date = models.DateField(null=True, blank=True)
     order = models.PositiveIntegerField(default=0)
     estimated_mins = models.PositiveIntegerField()
     actual_mins = models.PositiveIntegerField(null=True, blank=True)
@@ -89,6 +120,24 @@ class Task(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class TaskReflection(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='task_reflections')
+    task = models.OneToOneField(
+        Task,
+        on_delete=models.CASCADE,
+        related_name='task_reflection',
+    )
+    note = models.TextField(blank=True)
+    what_went_well = models.TextField(blank=True)
+    what_missed = models.TextField(blank=True)
+    actual_mins = models.PositiveIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"TaskReflection — {self.task.title}"
 
 
 class Reflection(models.Model):

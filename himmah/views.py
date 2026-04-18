@@ -9,20 +9,24 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import (
+    DayIntention,
     DayPlan,
     DayReview,
     Distraction,
     Goal,
     Reflection,
     Task,
+    TaskReflection,
     WeekReview,
 )
 from .serializers import (
+    DayIntentionSerializer,
     DayPlanSerializer,
     DayReviewSerializer,
     DistractionSerializer,
     GoalSerializer,
     ReflectionSerializer,
+    TaskReflectionSerializer,
     TaskSerializer,
     WeekReviewSerializer,
 )
@@ -51,7 +55,7 @@ class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
 
     def get_queryset(self):
-        queryset = Task.objects.filter(user=self.request.user)
+        queryset = Task.objects.filter(user=self.request.user).select_related("goal")
         date = self.request.query_params.get("date")
         start = self.request.query_params.get("start")
         end = self.request.query_params.get("end")
@@ -105,6 +109,21 @@ class DayPlanViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
+class DayIntentionViewSet(viewsets.ModelViewSet):
+    serializer_class = DayIntentionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = DayIntention.objects.filter(user=self.request.user)
+        date = self.request.query_params.get('date')
+        if date:
+            qs = qs.filter(date=date)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
 class DayReviewViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = DayReviewSerializer
@@ -138,12 +157,31 @@ class ReflectionViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
+class TaskReflectionViewSet(viewsets.ModelViewSet):
+    serializer_class = TaskReflectionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = TaskReflection.objects.filter(user=self.request.user)
+        task_id = self.request.query_params.get("task")
+        if task_id:
+            qs = qs.filter(task_id=task_id)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
 class DistractionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = DistractionSerializer
 
     def get_queryset(self):
-        return Distraction.objects.filter(user=self.request.user)
+        queryset = Distraction.objects.filter(user=self.request.user)
+        verdict = self.request.query_params.get("verdict")
+        if verdict:
+            queryset = queryset.filter(verdict=verdict)
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
