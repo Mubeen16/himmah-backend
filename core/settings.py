@@ -14,6 +14,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 
+import dj_database_url
+
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -84,14 +86,15 @@ WSGI_APPLICATION = "core.wsgi.application"
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('POSTGRES_DB', 'himmah'),
-        'USER': os.environ.get('POSTGRES_USER', 'himmah'),
-        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'himmah'),
-        'HOST': os.environ.get('POSTGRES_HOST', 'db'),
-        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
-    }
+    "default": dj_database_url.config(
+        default=(
+            f"postgresql://{os.getenv('POSTGRES_USER', 'himmah')}:"
+            f"{os.getenv('POSTGRES_PASSWORD', 'himmah')}@"
+            f"{os.getenv('POSTGRES_HOST', 'db')}:{os.getenv('POSTGRES_PORT', '5432')}/"
+            f"{os.getenv('POSTGRES_DB', 'himmah')}"
+        ),
+        conn_max_age=600,
+    )
 }
 
 
