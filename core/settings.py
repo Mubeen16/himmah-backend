@@ -171,13 +171,16 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
+# Password reset links (custom API) point the browser here
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@himmah.app")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Himmah <noreply@himmah.app>")
 
 DJOSER = {
     "PASSWORD_RESET_CONFIRM_URL": "reset-password/{uid}/{token}",
@@ -190,4 +193,5 @@ DJOSER = {
 }
 
 if DEBUG:
+    # Development: log outbound mail to the runserver / container terminal
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

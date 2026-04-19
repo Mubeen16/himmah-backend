@@ -1,6 +1,14 @@
+import logging
+from urllib.parse import urlencode
+
+from django.conf import settings
 from django.contrib.auth.models import User
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
 from django_ratelimit.decorators import ratelimit
 from django.utils import timezone
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import viewsets
 from rest_framework import status
 from rest_framework.decorators import action, api_view, permission_classes
@@ -30,6 +38,8 @@ from .serializers import (
     TaskSerializer,
     WeekReviewSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class GoalViewSet(viewsets.ModelViewSet):
@@ -177,11 +187,16 @@ class DistractionViewSet(viewsets.ModelViewSet):
     serializer_class = DistractionSerializer
 
     def get_queryset(self):
-        queryset = Distraction.objects.filter(user=self.request.user)
-        verdict = self.request.query_params.get("verdict")
-        if verdict:
-            queryset = queryset.filter(verdict=verdict)
-        return queryset
+        qs = Distraction.objects.filter(user=self.request.user)
+        verdict = self.request.query_params.get('verdict')
+        pending = self.request.query_params.get('pending')
+        if verdict == 'none':
+            qs = qs.filter(verdict__isnull=True)
+        elif verdict:
+            qs = qs.filter(verdict=verdict)
+        if pending == 'true':
+            qs = qs.filter(verdict__isnull=True)
+        return qs.order_by('-triggered_at')
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -233,4 +248,91 @@ def register(request):
             "username": user.username,
         },
         status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def request_password_reset(request):
+    email = request.data.get("email", "").strip()
+    if not email:
+        return Response(
+            {"error": "email is required"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    try:
+        user = User.objects.get(email=email)
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        # Percent-encode query values so "=" in tokens / uids is not confused with MIME
+        # quoted-printable line breaks when reading the console email in Docker logs.
+        base = settings.FRONTEND_URL.rstrip("/")
+        reset_url = f"{base}/reset-password?{urlencode({'uid': uid, 'token': token})}"
+        body = (
+            f"Click this link to reset your password:\n\n{reset_url}\n\n"
+            "This link expires in 24 hours.\n\n"
+            "If you did not request this, ignore this email."
+        )
+        if settings.DEBUG:
+            body += (
+                "\n\n(Development: console email can wrap long links. If the link fails, "
+                "copy the single line from the server log that starts with PASSWORD_RESET_URL=.)"
+            )
+        send_mail(
+            subject="Reset your Himmah password",
+            message=body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        if settings.DEBUG:
+            # Console email wraps long URLs; copy this single line for a reliable reset link.
+            logger.warning("PASSWORD_RESET_URL=%s", reset_url)
+    except User.DoesNotExist:
+        pass
+    return Response(
+        {"message": "if an account exists with that email, a reset link has been sent"},
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def confirm_password_reset(request):
+    uid = (request.data.get("uid") or "").strip()
+    token = (request.data.get("token") or "").strip()
+    password = request.data.get("password", "")
+
+    if not uid or not token or not password:
+        return Response(
+            {"error": "uid, token and password are required"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if len(password) < 8:
+        return Response(
+            {"error": "password must be at least 8 characters"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        user_id = force_str(urlsafe_base64_decode(uid))
+        user = User.objects.get(pk=user_id)
+    except (User.DoesNotExist, ValueError, TypeError):
+        return Response(
+            {"error": "invalid reset link"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not default_token_generator.check_token(user, token):
+        return Response(
+            {"error": "reset link has expired or is invalid"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user.set_password(password)
+    user.save()
+    return Response(
+        {"message": "password reset successfully"},
+        status=status.HTTP_200_OK,
     )

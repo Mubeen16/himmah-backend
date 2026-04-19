@@ -11,6 +11,8 @@ from .views import (
     TaskReflectionViewSet,
     TaskViewSet,
     WeekReviewViewSet,
+    confirm_password_reset,
+    request_password_reset,
 )
 
 router = DefaultRouter()
@@ -25,5 +27,7 @@ router.register(r"taskreflections", TaskReflectionViewSet, basename="taskreflect
 router.register(r"distractions", DistractionViewSet, basename="distraction")
 
 urlpatterns = [
+    path("auth/password-reset/", request_password_reset, name="request_password_reset"),
+    path("auth/password-reset/confirm/", confirm_password_reset, name="confirm_password_reset"),
     path("", include(router.urls)),
 ]

@@ -221,9 +221,9 @@ class WeekReview(models.Model):
 
 class Distraction(models.Model):
     VERDICT_CHOICES = [
-        ('parked', 'Parked'),
-        ('pivot', 'Pivot'),
-        ('rejected', 'Rejected'),
+        ('parked', 'Parked'),      # Hold
+        ('pivot', 'Pivot'),        # Pursue
+        ('rejected', 'Rejected'),  # Release
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='distractions')
@@ -239,8 +239,9 @@ class Distraction(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
-        if self._state.adding and self.revisit_after is None and self.triggered_at is not None:
-            self.revisit_after = (self.triggered_at + timedelta(hours=48)).date()
+        if self._state.adding and self.revisit_after is None:
+            if self.triggered_at:
+                self.revisit_after = (self.triggered_at + timedelta(hours=48)).date()
         super().save(*args, **kwargs)
 
     def __str__(self):

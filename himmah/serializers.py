@@ -287,19 +287,28 @@ class WeekReviewSerializer(serializers.ModelSerializer):
 
 
 class DistractionSerializer(serializers.ModelSerializer):
+    is_ready = serializers.SerializerMethodField()
+
     class Meta:
         model = Distraction
         fields = [
-            "id",
-            "goal",
-            "title",
-            "description",
-            "triggered_at",
-            "verdict",
-            "verdict_reason",
-            "reviewed_at",
-            "revisit_after",
-            "created_at",
-            "updated_at",
+            'id',
+            'goal',
+            'title',
+            'description',
+            'triggered_at',
+            'verdict',
+            'verdict_reason',
+            'reviewed_at',
+            'revisit_after',
+            'is_ready',
+            'created_at',
+            'updated_at',
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'is_ready']
+
+    def get_is_ready(self, obj):
+        if obj.revisit_after is None:
+            return False
+        from datetime import date
+        return date.today() >= obj.revisit_after
