@@ -12,6 +12,7 @@ from .views import (
     TaskViewSet,
     WeekReviewViewSet,
     confirm_password_reset,
+    health_check,
     request_password_reset,
 )
 
@@ -27,6 +28,7 @@ router.register(r"taskreflections", TaskReflectionViewSet, basename="taskreflect
 router.register(r"distractions", DistractionViewSet, basename="distraction")
 
 urlpatterns = [
+    path("health/", health_check, name="health_check"),
     path("auth/password-reset/", request_password_reset, name="request_password_reset"),
     path("auth/password-reset/confirm/", confirm_password_reset, name="confirm_password_reset"),
     path("", include(router.urls)),

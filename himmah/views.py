@@ -336,3 +336,9 @@ def confirm_password_reset(request):
         {"message": "password reset successfully"},
         status=status.HTTP_200_OK,
     )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def health_check(request):
+    return Response({"status": "ok"})
