@@ -12,3 +12,4 @@ sqlparse==0.5.5
 gunicorn
 dj-database-url
 whitenoise
+django-jazzmin

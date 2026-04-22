@@ -38,6 +38,7 @@ ALLOWED_HOSTS = [h.strip() for h in _hosts_raw.split(",") if h.strip()]
 # Application definition
 
 INSTALLED_APPS = [
+    "jazzmin",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -50,6 +51,16 @@ INSTALLED_APPS = [
     "djoser",
     "himmah",
 ]
+
+JAZZMIN_SETTINGS = {
+    "site_title": "Himmah Admin",
+    "site_header": "Himmah",
+    "site_brand": "Himmah",
+    "welcome_sign": "Himmah administration",
+    "site_logo_classes": "img-circle",
+    "show_ui_builder": False,
+    "navigation_expanded": True,
+}
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
