@@ -5,18 +5,17 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
-from django_ratelimit.decorators import ratelimit
 from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-from rest_framework import viewsets
-from rest_framework import status
+from django_ratelimit.decorators import ratelimit
+from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import (
+from himmah.models import (
     DayIntention,
     DayPlan,
     DayReview,
@@ -27,6 +26,7 @@ from .models import (
     TaskReflection,
     WeekReview,
 )
+
 from .serializers import (
     DayIntentionSerializer,
     DayPlanSerializer,
@@ -125,7 +125,7 @@ class DayIntentionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = DayIntention.objects.filter(user=self.request.user)
-        date = self.request.query_params.get('date')
+        date = self.request.query_params.get("date")
         if date:
             qs = qs.filter(date=date)
         return qs
@@ -188,15 +188,15 @@ class DistractionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Distraction.objects.filter(user=self.request.user)
-        verdict = self.request.query_params.get('verdict')
-        pending = self.request.query_params.get('pending')
-        if verdict == 'none':
+        verdict = self.request.query_params.get("verdict")
+        pending = self.request.query_params.get("pending")
+        if verdict == "none":
             qs = qs.filter(verdict__isnull=True)
         elif verdict:
             qs = qs.filter(verdict=verdict)
-        if pending == 'true':
+        if pending == "true":
             qs = qs.filter(verdict__isnull=True)
-        return qs.order_by('-triggered_at')
+        return qs.order_by("-triggered_at")
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

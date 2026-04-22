@@ -1,8 +1,8 @@
-from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework import serializers
 
-from .models import (
+from himmah.models import (
     DayIntention,
     DayPlan,
     DayReview,
@@ -200,17 +200,17 @@ class DayIntentionSerializer(serializers.ModelSerializer):
     class Meta:
         model = DayIntention
         fields = [
-            'id',
-            'day_plan',
-            'date',
-            'title',
-            'focus',
-            'purpose',
-            'character',
-            'created_at',
-            'updated_at',
+            "id",
+            "day_plan",
+            "date",
+            "title",
+            "focus",
+            "purpose",
+            "character",
+            "created_at",
+            "updated_at",
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ["id", "created_at", "updated_at"]
 
 
 class DayPlanSerializer(serializers.ModelSerializer):
@@ -292,23 +292,24 @@ class DistractionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Distraction
         fields = [
-            'id',
-            'goal',
-            'title',
-            'description',
-            'triggered_at',
-            'verdict',
-            'verdict_reason',
-            'reviewed_at',
-            'revisit_after',
-            'is_ready',
-            'created_at',
-            'updated_at',
+            "id",
+            "goal",
+            "title",
+            "description",
+            "triggered_at",
+            "verdict",
+            "verdict_reason",
+            "reviewed_at",
+            "revisit_after",
+            "is_ready",
+            "created_at",
+            "updated_at",
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'is_ready']
+        read_only_fields = ["id", "created_at", "updated_at", "is_ready"]
 
     def get_is_ready(self, obj):
         if obj.revisit_after is None:
             return False
         from datetime import date
+
         return date.today() >= obj.revisit_after
