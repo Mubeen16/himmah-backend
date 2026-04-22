@@ -355,6 +355,30 @@ DB_HOST=localhost
 DB_PORT=5432
 ```
 
+### Railway production notes (admin login + styling)
+
+If Django admin login returns `403 CSRF verification failed` or admin appears unstyled in production:
+
+1. Link Railway CLI to the backend service (not Postgres):
+   - `railway link`
+   - `railway service` -> choose `himmah-backend`
+2. Set backend production env vars:
+   - `ALLOWED_HOSTS=himmah-backend-production.up.railway.app`
+   - `CSRF_TRUSTED_ORIGINS=https://himmah-backend-production.up.railway.app`
+3. Ensure proxy SSL header is enabled in settings:
+   - `SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")`
+4. Serve Django static files via WhiteNoise:
+   - Add `whitenoise` to `requirements.txt`
+   - Add `whitenoise.middleware.WhiteNoiseMiddleware` after `SecurityMiddleware`
+   - Set:
+     - `STATIC_URL = "/static/"`
+     - `STATIC_ROOT = BASE_DIR / "staticfiles"`
+     - `STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"`
+5. Collect static files during container startup/deploy:
+   - run `python manage.py collectstatic --noinput` before `migrate`/`gunicorn`
+6. After deploy:
+   - open `/admin` in incognito or clear cookies and hard refresh.
+
 ### Get an API token
 
 ```bash
