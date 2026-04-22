@@ -13,3 +13,4 @@ gunicorn
 dj-database-url
 whitenoise
 django-jazzmin
+drf-spectacular
